@@ -202,7 +202,7 @@ void JpegDecoder::decodeBlock(int compID)
     
     // iDQT
     for (int i=0; i<64; ++i) {
-        mWorkingBlock[i] *= mDQT.tables[mSOF.quantID[i]][i];
+        mWorkingBlock[i] *= mDQT.tables[mSOF.quantID[compID]][i];
     }
     
     // iDCT
