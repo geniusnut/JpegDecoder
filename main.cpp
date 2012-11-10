@@ -8,7 +8,7 @@
 
 #include <iostream>
 #include <GLUT/GLUT.h>
-#include "JpegDecorder.h"
+#include "JpegDecoder.h"
 
 GLubyte * bits;
 GLuint g_width , g_height;
@@ -22,7 +22,7 @@ void disp( void ) {
 
 int main(int argc , char ** argv) {
     
-    JpegDecorder decoder("/Users/yuta.amano/Xcodes/JPEG/QB.jpeg");
+    JpegDecoder decoder("/Users/yuta.amano/Xcodes/JPEG/QB.jpeg");
     decoder.Decode();
     
     g_width = decoder.GetWitdh();

@@ -1,12 +1,12 @@
 //
-//  JpegDecorder.cpp
-//  JpegDecorder
+//  JpegDecoder.cpp
+//  JpegDecoder
 //
 //  Created by yuta.amano on 12/11/09.
 //  Copyright (c) 2012年 yuta.amano. All rights reserved.
 //
 
-#include "JpegDecorder.h"
+#include "JpegDecoder.h"
 #include "ByteStream.h"
 #include "Config.h"
 #include <cmath>
@@ -21,7 +21,7 @@ template <typename T> void sSafeDeleteArray(T *array);
 unsigned char sRevise0to255(double num);
 // --- END: support functions declare ----
 
-JpegDecorder::JpegDecorder(const char *filename)
+JpegDecoder::JpegDecoder(const char *filename)
 :
 mFileStream(filename),
 mRestartInterval(0)
@@ -40,7 +40,7 @@ mRestartInterval(0)
     }
 }
 
-JpegDecorder::~JpegDecorder()
+JpegDecoder::~JpegDecoder()
 {
     for (int i=0; i<3; ++i) {
         sSafeDeleteArray<unsigned char>(mYCbCr[i]);
@@ -48,7 +48,7 @@ JpegDecorder::~JpegDecorder()
     }
 }
 
-void JpegDecorder::Decode()
+void JpegDecoder::Decode()
 {
     bool flag = false;
     while (!mFileStream.IsEOF()) {
@@ -96,7 +96,7 @@ void JpegDecorder::Decode()
     } // while(!mFileStream.IsEOF)
 }
 
-void JpegDecorder::GetRGB(unsigned char *byte) const
+void JpegDecoder::GetRGB(unsigned char *byte) const
 {
     for (int i=0; i<mSOF.height * mSOF.width; ++i) {
         byte[3*i + 0] = mRGB[0][i];
@@ -105,17 +105,17 @@ void JpegDecorder::GetRGB(unsigned char *byte) const
     }
 }
 
-int JpegDecorder::GetWitdh() const
+int JpegDecoder::GetWitdh() const
 {
     return mSOF.width;
 }
 
-int JpegDecorder::GetHeight() const
+int JpegDecoder::GetHeight() const
 {
     return mSOF.height;
 }
 
-void JpegDecorder::analyzeSegment(Segment *seg)
+void JpegDecoder::analyzeSegment(Segment *seg)
 {
     unsigned short length = mFileStream.Read2Byte() - 2;
     unsigned char *bytes = new unsigned char[length];
@@ -125,7 +125,7 @@ void JpegDecorder::analyzeSegment(Segment *seg)
     delete[] bytes;
 }
 
-void JpegDecorder::skipThumbnail()
+void JpegDecoder::skipThumbnail()
 {
     unsigned char forward = 0;
     unsigned mark = 0;
@@ -137,7 +137,7 @@ void JpegDecorder::skipThumbnail()
     }
 }
 
-void JpegDecorder::decodeData()
+void JpegDecoder::decodeData()
 {
     int blockNumV = sCarrySurplus(mSOF.width,  8);
     int blockNumH = sCarrySurplus(mSOF.height, 8);
@@ -165,7 +165,7 @@ void JpegDecorder::decodeData()
     }
 }
 
-void JpegDecorder::decodeMCU()
+void JpegDecoder::decodeMCU()
 {
     for (int i=0; i<3; ++i) {
         int cntY = mSOF.maxV / mSOF.sampV[i];
@@ -188,7 +188,7 @@ void JpegDecorder::decodeMCU()
     }
 }
 
-void JpegDecorder::decodeBlock(int compID)
+void JpegDecoder::decodeBlock(int compID)
 {
     if (compID == 0) {
         memset(mWorkingBlock, 0, sizeof(unsigned char) * 64);
@@ -223,7 +223,7 @@ void JpegDecorder::decodeBlock(int compID)
     memcpy(mWorkingBlock, iDCT, sizeof(unsigned char) * 64);
 }
 
-void JpegDecorder::decodeDC(int compID)
+void JpegDecoder::decodeDC(int compID)
 {
     HuffmanTable huff = mDHT(DC, mSOS(DC, compID));
     
@@ -239,7 +239,7 @@ void JpegDecorder::decodeDC(int compID)
     mWorkingBlock[0] = mPreDC[compID];
 }
 
-void JpegDecorder::decodeAC(int compID)
+void JpegDecoder::decodeAC(int compID)
 {
     HuffmanTable huff = mDHT(AC, mSOS(AC, compID));
     
@@ -273,7 +273,7 @@ void JpegDecorder::decodeAC(int compID)
     
 }
 
-unsigned char JpegDecorder::decodeHuffCode(const HuffmanTable &huffTable)
+unsigned char JpegDecoder::decodeHuffCode(const HuffmanTable &huffTable)
 {
     int bitnum = -1;
     unsigned char length = 0;
@@ -288,7 +288,7 @@ unsigned char JpegDecorder::decodeHuffCode(const HuffmanTable &huffTable)
     return bitnum;
 }
 
-void JpegDecorder::YCbCr2RGB(int x, int y)
+void JpegDecoder::YCbCr2RGB(int x, int y)
 {
     
     int lineNum = y * mSOF.maxV * 8;

@@ -1,13 +1,13 @@
 //
-//  JpegDecorder.h
-//  JpegDecorder
+//  JpegDecoder.h
+//  JpegDecoder
 //
 //  Created by yuta.amano on 12/11/09.
 //  Copyright (c) 2012年 yuta.amano. All rights reserved.
 //
 
-#ifndef __JpegDecorder__JpegDecorder__
-#define __JpegDecorder__JpegDecorder__
+#ifndef __JpegDecoder__JpegDecoder__
+#define __JpegDecoder__JpegDecoder__
 
 #include <iostream>
 #include "DQT.h"
@@ -16,11 +16,11 @@
 #include "SOS.h"
 #include "FileStream.h"
 
-class JpegDecorder
+class JpegDecoder
 {
 public:
-    JpegDecorder(const char *filename);
-    ~JpegDecorder();
+    JpegDecoder(const char *filename);
+    ~JpegDecoder();
     
     void Decode();
     void GetRGB(unsigned char *byte) const;
@@ -52,4 +52,4 @@ private:
     
     unsigned char mPreDC[3];
 };
-#endif /* defined(__JpegDecorder__JpegDecorder__) */
+#endif /* defined(__JpegDecoder__JpegDecoder__) */
