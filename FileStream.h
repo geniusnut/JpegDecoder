@@ -21,7 +21,7 @@ public:
     unsigned short Read2Byte();
     void           ReadNBytes(int n, unsigned char *res);
     unsigned char  ReadNextByte();
-    unsigned char  ReadBits(int count);
+    int            ReadBits(int count);
     bool           IsEOF() const;
     
     int mCount;

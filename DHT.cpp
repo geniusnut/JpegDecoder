@@ -12,6 +12,7 @@
 #include <iostream>
 #include <algorithm>
 #include <bitset>
+#include <fstream>
 
 using namespace std;
 
@@ -41,6 +42,17 @@ void HuffmanTable::ShowConsole()
         cout << "len:" << (int)lengthArray[i] << " ";
         cout << "cod:" << (int)codeArray[i] << " ";
         cout << "dat:" << (int)dataArray[i] << endl;
+    }
+}
+void HuffmanTable::WriteFile(const char *filename)
+{
+	ofstream ofs(filename, ios::out | ios::trunc);
+	for (int i=0; i<codeArray.size(); ++i) {
+        ofs << dec << "size:" << (int)lengthArray[i] << " ";
+        bitset<16> bs(codeArray[i]);
+		ofs << "code:" << bs << " ";
+        ofs << hex << "value:" << (int)dataArray[i] << endl;
+		ofs << endl;
     }
 }
 

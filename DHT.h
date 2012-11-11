@@ -18,6 +18,7 @@ typedef struct S_HuffmanTable
 {
     int GetData(unsigned char length, unsigned short code) const;
     void ShowConsole();
+	void WriteFile(const char *filename);
     
     // these indices should synchronize
     std::vector<unsigned char> lengthArray;

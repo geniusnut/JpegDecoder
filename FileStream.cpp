@@ -58,19 +58,20 @@ void FileStream::ReadNBytes(int n, unsigned char *res)
         res[i] = ReadByte();
     }
 }
-
+#include <iostream>
 unsigned char FileStream::ReadNextByte()
 {
     unsigned char res;
     mFile.read((char*)&res, sizeof(unsigned char));
     long pos = mFile.tellg();
     mFile.seekg(pos - 1); // back 1 byte
+
     return res;
 }
 
-unsigned char FileStream::ReadBits(int count)
+int FileStream::ReadBits(int count)
 {
-    unsigned char res = 0;
+    int res = 0;
     while (count != 0) {
         res <<= 1;
         if (mBitPosition == 0) {

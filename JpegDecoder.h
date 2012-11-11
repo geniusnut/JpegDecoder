@@ -43,7 +43,7 @@ private:
     SOF           mSOF;
     SOS           mSOS;
     FileStream    mFileStream;
-    unsigned char mRestartInterval;
+    unsigned short mRestartInterval;
     double        mCosTable[8][8];
 
     unsigned char *mRGB[3];

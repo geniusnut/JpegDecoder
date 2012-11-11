@@ -10,7 +10,7 @@
 #include "ByteStream.h"
 #include "Config.h"
 #include <cmath>
-
+#include <fstream>
 using namespace std;
 
 // --- support functions declare ----
@@ -141,7 +141,7 @@ void JpegDecoder::decodeData()
 {
     int blockNumV = sCarrySurplus(mSOF.width,  8);
     int blockNumH = sCarrySurplus(mSOF.height, 8);
-    int rgbSize = blockNumV * blockNumH * 8;
+    int rgbSize = blockNumV * blockNumH * 64;
     for (int i=0; i<3; ++i) {
         mRGB[i] = new unsigned char[rgbSize];
         mYCbCr[i] = new unsigned char[rgbSize];
@@ -160,6 +160,13 @@ void JpegDecoder::decodeData()
                 continue;
             }
             if (mRestartInterval == MCUCount) {
+				MCUCount = 0;
+				if (mFileStream.ReadByte() == 0xff) {
+					int rst = mFileStream.ReadNextByte();
+					if (rst >= 0xd0 && rst <= 0xd7) {
+						mFileStream.ReadByte();
+					}
+				}
             }
         }
     }
@@ -225,7 +232,7 @@ void JpegDecoder::decodeBlock(int compID)
 
 void JpegDecoder::decodeDC(int compID)
 {
-    HuffmanTable huff = mDHT(DC, mSOS(DC, compID));
+    const HuffmanTable &huff = mDHT(DC, mSOS(DC, compID));
     
     int bitnum = decodeHuffCode(huff);
     
@@ -241,9 +248,10 @@ void JpegDecoder::decodeDC(int compID)
 
 void JpegDecoder::decodeAC(int compID)
 {
-    HuffmanTable huff = mDHT(AC, mSOS(AC, compID));
+    const HuffmanTable &huff = mDHT(AC, mSOS(AC, compID));
     
     for (int i=1; i<64; ++i) {
+
         int run_bit = decodeHuffCode(huff);
         
         if (run_bit == 0) { // EOB
@@ -265,10 +273,12 @@ void JpegDecoder::decodeAC(int compID)
             ++i;
             --run;
         }
-        mWorkingBlock[JpgZigzag[i]] = mFileStream.ReadBits(bit);
-        if (mWorkingBlock[JpgZigzag[i]] & (1 << (bit - 1))) {
-            mWorkingBlock[JpgZigzag[i]] -= (1 << bit) - 1;
+		int a = mFileStream.ReadBits(bit);
+        if ((a & (1 << (bit - 1))) == 0) {
+            a -= (1 << bit) - 1;
         }
+		mWorkingBlock[JpgZigzag[i]] = a;//mFileStream.ReadBits(bit);
+        
     }
     
 }
@@ -298,13 +308,13 @@ void JpegDecoder::YCbCr2RGB(int x, int y)
     int endX = mSOF.maxH * 8;
     int endY = mSOF.maxV * 8;
     
-    uint8_t *pY  = mYCbCr[0];
-    uint8_t *pCb = mYCbCr[1];
-    uint8_t *pCr = mYCbCr[2];
+    unsigned char *pY  = mYCbCr[0];
+    unsigned char *pCb = mYCbCr[1];
+    unsigned char *pCr = mYCbCr[2];
     
-    uint8_t *pR = mRGB[0] + offset;
-    uint8_t *pG = mRGB[1] + offset;
-    uint8_t *pB = mRGB[2] + offset;
+    unsigned char *pR = mRGB[0] + offset;
+    unsigned char *pG = mRGB[1] + offset;
+    unsigned char *pB = mRGB[2] + offset;
     
     for (int picY=0; picY<endY; ++picY) {
         for (int picX=0; picX<endX; ++picX) {
