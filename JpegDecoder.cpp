@@ -184,7 +184,7 @@ void JpegDecoder::decodeMCU()
                 decodeBlock(i);
 
                 // Too chaotic. Refactor this.
-                int startAddr = y * stepV * x * 64;
+                int startAddr = y * stepV * 8 + x * 8;
                 for (int MCUy=0; MCUy<(8*cntY); ++MCUy) {
                     for (int MCUx=0; MCUx<(8*cntX); ++MCUx) {
                         mYCbCr[i][startAddr + (MCUy*stepV+MCUx)] = mWorkingBlock[(MCUy/cntY)*8+(MCUx/cntX)];
@@ -213,7 +213,7 @@ void JpegDecoder::decodeBlock(int compID)
     }
     
     // iDCT
-    unsigned char iDCT[64];
+    int iDCT[64];
     for (int y=0; y<8; ++y) {
         for (int x=0; x<8; ++x) {
             double sum = 0.0;
@@ -224,10 +224,12 @@ void JpegDecoder::decodeBlock(int compID)
                     sum += cu * cv * mWorkingBlock[v*8 + u] * mCosTable[u][x] * mCosTable[v][y];
                 } //vu
             } // v
-            iDCT[y*8 + x] = (int)(sum / 4.0);
+            iDCT[y*8 + x] = (int)(sum / 4.0 + 128);
         } // x
     } // y
-    memcpy(mWorkingBlock, iDCT, sizeof(unsigned char) * 64);
+	for (int i=0; i<64; ++i)  {
+		mWorkingBlock[i] = iDCT[i];
+	}
 }
 
 void JpegDecoder::decodeDC(int compID)
@@ -277,13 +279,13 @@ void JpegDecoder::decodeAC(int compID)
         if ((a & (1 << (bit - 1))) == 0) {
             a -= (1 << bit) - 1;
         }
-		mWorkingBlock[JpgZigzag[i]] = a;//mFileStream.ReadBits(bit);
+		mWorkingBlock[JpgZigzag[i]] = a;
         
     }
     
 }
 
-unsigned char JpegDecoder::decodeHuffCode(const HuffmanTable &huffTable)
+int JpegDecoder::decodeHuffCode(const HuffmanTable &huffTable)
 {
     int bitnum = -1;
     unsigned char length = 0;

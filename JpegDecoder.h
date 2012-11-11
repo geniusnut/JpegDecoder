@@ -35,7 +35,7 @@ private:
     void decodeBlock(int compID);
     void decodeDC(int compID);
     void decodeAC(int compID);
-    unsigned char decodeHuffCode(const HuffmanTable &huffTable);
+    int  decodeHuffCode(const HuffmanTable &huffTable);
     void YCbCr2RGB(int x, int y);
     
     DQT           mDQT;
