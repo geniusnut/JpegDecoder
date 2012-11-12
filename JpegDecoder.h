@@ -48,8 +48,9 @@ private:
 
     unsigned char *mRGB[3];
     unsigned char *mYCbCr[3];
-    unsigned char mWorkingBlock[64];
+    int            mUnitSize;
+    int            mWorkingBlock[64];
     
-    unsigned char mPreDC[3];
+    int            mPreDC[3];
 };
 #endif /* defined(__JpegDecoder__JpegDecoder__) */

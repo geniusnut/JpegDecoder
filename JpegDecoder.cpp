@@ -139,12 +139,12 @@ void JpegDecoder::skipThumbnail()
 
 void JpegDecoder::decodeData()
 {
-    int blockNumV = sCarrySurplus(mSOF.width,  8);
-    int blockNumH = sCarrySurplus(mSOF.height, 8);
-    int rgbSize = blockNumV * blockNumH * 64;
+    int blockNumV = sCarrySurplus(mSOF.height, 8);
+    int blockNumH = sCarrySurplus(mSOF.width , 8);
+    mUnitSize = mSOF.maxH * mSOF.maxV * 64;
     for (int i=0; i<3; ++i) {
-        mRGB[i] = new unsigned char[rgbSize];
-        mYCbCr[i] = new unsigned char[rgbSize];
+        mRGB[i] = new unsigned char[mSOF.height * mSOF.width];
+        mYCbCr[i] = new unsigned char[mUnitSize];
     }
     
     int MCUNumV = sCarrySurplus(blockNumV, mSOF.maxV);
@@ -170,11 +170,19 @@ void JpegDecoder::decodeData()
             }
         }
     }
+    for (int i=0; i<3; ++i) {
+        sSafeDeleteArray(mYCbCr[i]);
+    }
 }
 
 void JpegDecoder::decodeMCU()
 {
     for (int i=0; i<3; ++i) {
+        if (i != 0) {
+            memset(mYCbCr[i], 0x80, sizeof(unsigned char) * mUnitSize);
+        } else {
+            memset(mYCbCr[i], 0x00, sizeof(unsigned char) * mUnitSize);
+        }
         int cntY = mSOF.maxV / mSOF.sampV[i];
         int cntX = mSOF.maxH / mSOF.sampH[i];
         int stepV = mSOF.maxH * 8;
@@ -197,11 +205,7 @@ void JpegDecoder::decodeMCU()
 
 void JpegDecoder::decodeBlock(int compID)
 {
-    if (compID == 0) {
-        memset(mWorkingBlock, 0, sizeof(unsigned char) * 64);
-    } else {
-        memset(mWorkingBlock, 0x80, sizeof(unsigned char) * 64);
-    }
+    memset(mWorkingBlock, 0, sizeof(int) * 64);
     
     // DC and AC
     decodeDC(compID);
@@ -216,15 +220,17 @@ void JpegDecoder::decodeBlock(int compID)
     int iDCT[64];
     for (int y=0; y<8; ++y) {
         for (int x=0; x<8; ++x) {
+            
             double sum = 0.0;
             for (int v=0; v<8; ++v) {
-                double cv = (v != 0) ? 1 : invSqrt2;
+                double cv = ((v != 0) ? 1.0 : invSqrt2);
                 for (int u=0; u<8; ++u) {
-                    double cu = (u != 0) ? 1 : invSqrt2;
+                    double cu = ((u != 0) ? 1.0 : invSqrt2);
                     sum += cu * cv * mWorkingBlock[v*8 + u] * mCosTable[u][x] * mCosTable[v][y];
                 } //vu
             } // v
             iDCT[y*8 + x] = (int)(sum / 4.0 + 128);
+            
         } // x
     } // y
 	for (int i=0; i<64; ++i)  {
@@ -257,7 +263,7 @@ void JpegDecoder::decodeAC(int compID)
         int run_bit = decodeHuffCode(huff);
         
         if (run_bit == 0) { // EOB
-            while (i<64) {
+            while (i < 64) {
                 mWorkingBlock[JpgZigzag[i]] = 0;
                 ++i;
             }
@@ -280,9 +286,7 @@ void JpegDecoder::decodeAC(int compID)
             a -= (1 << bit) - 1;
         }
 		mWorkingBlock[JpgZigzag[i]] = a;
-        
     }
-    
 }
 
 int JpegDecoder::decodeHuffCode(const HuffmanTable &huffTable)
