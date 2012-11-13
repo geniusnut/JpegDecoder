@@ -192,10 +192,10 @@ void JpegDecoder::decodeMCU()
                 decodeBlock(i);
 
                 // Too chaotic. Refactor this.
-                int startAddr = y * stepV * 8 + x * 8;
+                unsigned char *tmp = mYCbCr[i] + y * stepV * 8 + x * 8;
                 for (int MCUy=0; MCUy<(8*cntY); ++MCUy) {
                     for (int MCUx=0; MCUx<(8*cntX); ++MCUx) {
-                        mYCbCr[i][startAddr + (MCUy*stepV+MCUx)] = mWorkingBlock[(MCUy/cntY)*8+(MCUx/cntX)];
+                        tmp[MCUy*stepV+MCUx] = mWorkingBlock[(MCUy/cntY)*8+(MCUx/cntX)];
                     }
                 }
             }
@@ -308,7 +308,7 @@ void JpegDecoder::YCbCr2RGB(int x, int y)
 {
     
     int lineNum = y * mSOF.maxV * 8;
-    int offsetV = lineNum * mSOF.height;
+    int offsetV = lineNum * mSOF.width;
     int offsetH = x * 8 * mSOF.maxH;
     int offset = offsetV + offsetH;
     int endX = mSOF.maxH * 8;
@@ -338,7 +338,6 @@ void JpegDecoder::YCbCr2RGB(int x, int y)
             pG[index] = sRevise0to255(v2);
             double v3 = *pY + (*pCb - 0x80) * 1.77200;
             pB[index] = sRevise0to255(v3);
-            
             pY++;
             pCb++;
             pCr++;
