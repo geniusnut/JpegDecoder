@@ -143,7 +143,7 @@ void JpegDecoder::decodeData()
     int blockNumH = sCarrySurplus(mSOF.width , 8);
     mUnitSize = mSOF.maxH * mSOF.maxV * 64;
     for (int i=0; i<3; ++i) {
-        mRGB[i] = new unsigned char[mSOF.height * mSOF.width];
+        mRGB[i] = new unsigned char[blockNumH * blockNumV * 64];
         mYCbCr[i] = new unsigned char[mUnitSize];
     }
     
@@ -165,6 +165,7 @@ void JpegDecoder::decodeData()
 					int rst = mFileStream.ReadNextByte();
 					if (rst >= 0xd0 && rst <= 0xd7) {
 						mFileStream.ReadByte();
+                        mPreDC[0] = mPreDC[1] = mPreDC[2] = 0;
 					}
 				}
             }
