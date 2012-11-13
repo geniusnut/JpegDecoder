@@ -9,32 +9,25 @@
 #include "JpegDecoder.h"
 #include "ByteStream.h"
 #include "Config.h"
+#include "SupportFunc.h"
 #include <cmath>
 #include <fstream>
 using namespace std;
 
-// --- support functions declare ----
-int sCarrySurplus(int number, int divide);
-
-template <typename T> void sSafeDeleteArray(T *array);
-
-unsigned char sRevise0to255(double num);
-// --- END: support functions declare ----
-
 JpegDecoder::JpegDecoder(const char *filename)
 :
 mFileStream(filename),
-mRestartInterval(0)
+mRestartInterval(0),
+mMCU(0)
 {
     // create a cos table for iDCT
     for (int u=0; u<8; ++u) {
         for (int x=0; x<8; ++x) {
-            mCosTable[u][x] = std::cos((2*x + 1) * u * 3.1415926535 / 16.0);
+            mCosTable[u][x] = cos((2*x + 1) * u * 3.1415926535 / 16.0);
         }
     }
-    
+
     for (int i=0; i<3; ++i) {
-        mYCbCr[i] = 0;
         mRGB[i]   = 0;
         mPreDC[i] = 0;
     }
@@ -43,8 +36,7 @@ mRestartInterval(0)
 JpegDecoder::~JpegDecoder()
 {
     for (int i=0; i<3; ++i) {
-        sSafeDeleteArray<unsigned char>(mYCbCr[i]);
-        sSafeDeleteArray<unsigned char>(mRGB[i]);
+        SupportFunc::SafeDeleteArray<unsigned char>(mRGB[i]);
     }
 }
 
@@ -56,7 +48,7 @@ void JpegDecoder::Decode()
         if (mark != 0xff) {
             continue;
         }
-        
+
         mark = mFileStream.ReadByte();
         switch(mark) {
             case markSOI:
@@ -139,23 +131,21 @@ void JpegDecoder::skipThumbnail()
 
 void JpegDecoder::decodeData()
 {
-    int blockNumV = sCarrySurplus(mSOF.height, 8);
-    int blockNumH = sCarrySurplus(mSOF.width , 8);
-    mUnitSize = mSOF.maxH * mSOF.maxV * 64;
+    mMCU = new MCU(mSOF);
+    int MCUNumV = SupportFunc::CarrySurplus(mMCU->blockNumV, mSOF.maxV);
+    int MCUNumH = SupportFunc::CarrySurplus(mMCU->blockNumH, mSOF.maxH);
+
     for (int i=0; i<3; ++i) {
-        mRGB[i] = new unsigned char[blockNumH * blockNumV * 64];
-        mYCbCr[i] = new unsigned char[mUnitSize];
+        mRGB[i] = new unsigned char[MCUNumV * MCUNumH * 64];
     }
-    
-    int MCUNumV = sCarrySurplus(blockNumV, mSOF.maxV);
-    int MCUNumH = sCarrySurplus(blockNumH, mSOF.maxH);
+
     int MCUCount = 0;
     for (int y=0; y<MCUNumV; ++y) {
         for (int x=0; x<MCUNumH; ++x) {
             decodeMCU();
             ++MCUCount;
-            YCbCr2RGB(x, y);
-            
+            MCU2RGB(x, y);
+
             if (!mRestartInterval) {
                 continue;
             }
@@ -171,34 +161,21 @@ void JpegDecoder::decodeData()
             }
         }
     }
-    for (int i=0; i<3; ++i) {
-        sSafeDeleteArray(mYCbCr[i]);
+
+    if (!mMCU) {
+        delete mMCU;
+        mMCU = 0;
     }
 }
 
 void JpegDecoder::decodeMCU()
 {
+    mMCU->InitializeComponent();
     for (int i=0; i<3; ++i) {
-        if (i != 0) {
-            memset(mYCbCr[i], 0x80, sizeof(unsigned char) * mUnitSize);
-        } else {
-            memset(mYCbCr[i], 0x00, sizeof(unsigned char) * mUnitSize);
-        }
-        int cntY = mSOF.maxV / mSOF.sampV[i];
-        int cntX = mSOF.maxH / mSOF.sampH[i];
-        int stepV = mSOF.maxH * 8;
-        
         for (int y=0; y<mSOF.sampV[i]; ++y) {
             for (int x=0; x<mSOF.sampH[i]; ++x) {
                 decodeBlock(i);
-
-                // Too chaotic. Refactor this.
-                unsigned char *tmp = mYCbCr[i] + y * stepV * 8 + x * 8;
-                for (int MCUy=0; MCUy<(8*cntY); ++MCUy) {
-                    for (int MCUx=0; MCUx<(8*cntX); ++MCUx) {
-                        tmp[MCUy*stepV+MCUx] = mWorkingBlock[(MCUy/cntY)*8+(MCUx/cntX)];
-                    }
-                }
+                mMCU->SetBlock(i, x, y, mWorkingBlock);
             }
         }
     }
@@ -207,21 +184,21 @@ void JpegDecoder::decodeMCU()
 void JpegDecoder::decodeBlock(int compID)
 {
     memset(mWorkingBlock, 0, sizeof(int) * 64);
-    
+
     // DC and AC
     decodeDC(compID);
     decodeAC(compID);
-    
+
     // iDQT
     for (int i=0; i<64; ++i) {
         mWorkingBlock[i] *= mDQT.tables[mSOF.quantID[compID]][i];
     }
-    
+
     // iDCT
     int iDCT[64];
     for (int y=0; y<8; ++y) {
         for (int x=0; x<8; ++x) {
-            
+
             double sum = 0.0;
             for (int v=0; v<8; ++v) {
                 double cv = ((v != 0) ? 1.0 : invSqrt2);
@@ -231,7 +208,7 @@ void JpegDecoder::decodeBlock(int compID)
                 } //vu
             } // v
             iDCT[y*8 + x] = (int)(sum / 4.0 + 128);
-            
+
         } // x
     } // y
 	for (int i=0; i<64; ++i)  {
@@ -242,9 +219,9 @@ void JpegDecoder::decodeBlock(int compID)
 void JpegDecoder::decodeDC(int compID)
 {
     const HuffmanTable &huff = mDHT(DC, mSOS(DC, compID));
-    
+
     int bitnum = decodeHuffCode(huff);
-    
+
     int diff = mFileStream.ReadBits(bitnum);
     // if the top bit of diff is 0, it's negative
     if ((diff & (1 << (bitnum - 1))) == 0) {
@@ -258,11 +235,11 @@ void JpegDecoder::decodeDC(int compID)
 void JpegDecoder::decodeAC(int compID)
 {
     const HuffmanTable &huff = mDHT(AC, mSOS(AC, compID));
-    
+
     for (int i=1; i<64; ++i) {
 
         int run_bit = decodeHuffCode(huff);
-        
+
         if (run_bit == 0) { // EOB
             while (i < 64) {
                 mWorkingBlock[JpgZigzag[i]] = 0;
@@ -270,7 +247,7 @@ void JpegDecoder::decodeAC(int compID)
             }
             return;
         }
-        
+
         int run = run_bit >> 4;
         int bit = run_bit & 0x0f;
 
@@ -305,71 +282,34 @@ int JpegDecoder::decodeHuffCode(const HuffmanTable &huffTable)
     return bitnum;
 }
 
-void JpegDecoder::YCbCr2RGB(int x, int y)
+void JpegDecoder::MCU2RGB(int x, int y)
 {
-    
-    int lineNum = y * mSOF.maxV * 8;
-    int offsetV = lineNum * mSOF.width;
-    int offsetH = x * 8 * mSOF.maxH;
-    int offset = offsetV + offsetH;
-    int endX = mSOF.maxH * 8;
-    int endY = mSOF.maxV * 8;
-    
-    unsigned char *pY  = mYCbCr[0];
-    unsigned char *pCb = mYCbCr[1];
-    unsigned char *pCr = mYCbCr[2];
-    
+    int offsetH = x * mMCU->width;
+    int offsetV = y * mMCU->height * mSOF.width;
+    int offset = offsetH + offsetV;
+
+    unsigned char *pY  = mMCU->YCbCr[0];
+    unsigned char *pCb = mMCU->YCbCr[1];
+    unsigned char *pCr = mMCU->YCbCr[2];
+
     unsigned char *pR = mRGB[0] + offset;
     unsigned char *pG = mRGB[1] + offset;
     unsigned char *pB = mRGB[2] + offset;
-    
-    for (int picY=0; picY<endY; ++picY) {
-        for (int picX=0; picX<endX; ++picX) {
+
+    for (int picY = 0; picY < mMCU->height; ++picY) {
+        for (int picX = 0; picX < mMCU->width; ++picX) {
             if (picX + offsetH >= mSOF.width) {
-                pY  += endX - picX;
-                pCb += endX - picX;
-                pCr += endX - picX;
+                pY  += mMCU->width - picX;
+                pCb += mMCU->width - picX;
+                pCr += mMCU->width - picX;
                 break;
             }
             int index = picY * mSOF.width + picX;
- 
-            double v1 = *pY + (*pCr - 0x80) * 1.4020;
-            pR[index] = sRevise0to255(v1);
-            double v2 = *pY - (*pCb - 0x80) * 0.34414 - (*pCr - 0x80) * 0.71414;
-            pG[index] = sRevise0to255(v2);
-            double v3 = *pY + (*pCb - 0x80) * 1.77200;
-            pB[index] = sRevise0to255(v3);
+
+            SupportFunc::ToRGB(*pY, *pCb, *pCr, &pR[index], &pG[index], &pB[index]);
             pY++;
             pCb++;
             pCr++;
         }
     }
 }
-
-
-// --- support functions definition ---
-int sCarrySurplus(int number, int divide)
-{
-    return number / divide + ((number % divide) ? 1 : 0);
-}
-
-
-template <typename T> void sSafeDeleteArray(T *array)
-{
-    if (array) {
-        delete[] array;
-        array = 0;
-    }
-}
-
-unsigned char sRevise0to255(double num)
-{
-    if (num > 255.0) {
-        return 255;
-    }
-    if (num < 0.0) {
-        return 0;
-    }
-    return (unsigned char)num;
-}
-// --- END: support functions definition ---

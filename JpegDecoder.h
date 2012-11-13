@@ -14,6 +14,7 @@
 #include "DHT.h"
 #include "SOF.h"
 #include "SOS.h"
+#include "MCU.h"
 #include "FileStream.h"
 
 class JpegDecoder
@@ -36,21 +37,21 @@ private:
     void decodeDC(int compID);
     void decodeAC(int compID);
     int  decodeHuffCode(const HuffmanTable &huffTable);
-    void YCbCr2RGB(int x, int y);
+    void MCU2RGB(int x, int y);
     
-    DQT           mDQT;
-    DHT           mDHT;
-    SOF           mSOF;
-    SOS           mSOS;
-    FileStream    mFileStream;
+    DQT            mDQT;
+    DHT            mDHT;
+    SOF            mSOF;
+    SOS            mSOS;
+    FileStream     mFileStream;
     unsigned short mRestartInterval;
-    double        mCosTable[8][8];
+    double         mCosTable[8][8];
 
-    unsigned char *mRGB[3];
-    unsigned char *mYCbCr[3];
+    unsigned char  *mRGB[3];
     int            mUnitSize;
     int            mWorkingBlock[64];
     
     int            mPreDC[3];
+    MCU            *mMCU;
 };
 #endif /* defined(__JpegDecoder__JpegDecoder__) */
