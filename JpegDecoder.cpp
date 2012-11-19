@@ -136,7 +136,7 @@ void JpegDecoder::decodeData()
     int MCUNumH = SupportFunc::CarrySurplus(mMCU->blockNumH, mSOF.maxH);
 
     for (int i=0; i<3; ++i) {
-        mRGB[i] = new unsigned char[MCUNumV * MCUNumH * 64];
+		mRGB[i] = new unsigned char[mMCU->blockNumH * mMCU->blockNumV * 64];
     }
 
     int MCUCount = 0;
@@ -295,6 +295,7 @@ void JpegDecoder::MCU2RGB(int x, int y)
     unsigned char *pR = mRGB[0] + offset;
     unsigned char *pG = mRGB[1] + offset;
     unsigned char *pB = mRGB[2] + offset;
+
 
     for (int picY = 0; picY < mMCU->height; ++picY) {
         for (int picX = 0; picX < mMCU->width; ++picX) {

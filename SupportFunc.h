@@ -11,13 +11,14 @@
 
 namespace SupportFunc
 {
-    int CarrySurplus(int number, int divide)
+    static int CarrySurplus(int number, int divide)
     {
         return number / divide + ((number % divide) ? 1 : 0);
     }
 
 
-    template <typename T> void SafeDeleteArray(T *array)
+    template <typename T> 
+	static void SafeDeleteArray(T *array)
     {
         if (array) {
             delete[] array;
@@ -25,7 +26,7 @@ namespace SupportFunc
         }
     }
 
-    unsigned char Revise0to255(double num)
+    static unsigned char Revise0to255(double num)
     {
         if (num > 255.0) {
             return 255;
@@ -36,7 +37,7 @@ namespace SupportFunc
         return (unsigned char)num;
     }
 
-    void ToRGB(unsigned char Y, unsigned char Cb, unsigned char Cr,
+    static void ToRGB(unsigned char Y, unsigned char Cb, unsigned char Cr,
                 unsigned char *R, unsigned char *G, unsigned char *B)
     {
         double v1 = Y + (Cr - 0x80) * 1.4020;

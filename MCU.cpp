@@ -41,7 +41,7 @@ void MCU::InitializeComponent()
 
 void MCU::SetBlock(int compID, int bx, int by, int *block)
 {
-    unsigned char *tp = YCbCr[compID] + by * width + bx;
+    unsigned char *tp = YCbCr[compID] + by * width * 8 + bx * 8;
     for (int MCUy=0; MCUy<(8*thinOutY[compID]); ++MCUy) {
         for (int MCUx=0; MCUx<(8*thinOutX[compID]); ++MCUx) {
             tp[MCUy * width + MCUx] = block[(MCUy/thinOutY[compID])*8+(MCUx/thinOutX[compID])];
