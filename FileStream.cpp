@@ -26,7 +26,7 @@ FileStream::~FileStream()
 unsigned char FileStream::ReadByte()
 {
     mBitPosition = 0;
-    
+
     unsigned char res = 0;
     mFile.read((char*)&res, sizeof(unsigned char));
     ++mCount;
@@ -36,18 +36,18 @@ unsigned char FileStream::ReadByte()
 unsigned short FileStream::Read2Byte()
 {
     mBitPosition = 0;
-    
+
     unsigned short res = 0;
     unsigned char upper = 0;
     unsigned char lower = 0;
-    
+
     mFile.read((char*)&upper, sizeof(unsigned char));
     mFile.read((char*)&lower, sizeof(unsigned char));
-    
+
     res |= upper;
     res <<= 8;
     res |= lower;
-    
+
     mCount += 2;
     return res;
 }
@@ -58,14 +58,13 @@ void FileStream::ReadNBytes(int n, unsigned char *res)
         res[i] = ReadByte();
     }
 }
-#include <iostream>
+
 unsigned char FileStream::ReadNextByte()
 {
     unsigned char res;
     mFile.read((char*)&res, sizeof(unsigned char));
     long pos = mFile.tellg();
     mFile.seekg(pos - 1); // back 1 byte
-
     return res;
 }
 

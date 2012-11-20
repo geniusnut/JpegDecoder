@@ -18,7 +18,7 @@ void SOF::Analyze(ByteStream *bytes)
         cerr << "[SOFReader] this only supports base line format now!" << endl;
         exit(1);
     }
-    
+
     height = (bytes->GetByte() << 8) + bytes->GetByte();
     width = (bytes->GetByte() << 8) + bytes->GetByte();
     if (bytes->GetByte() != 3) {
@@ -36,7 +36,7 @@ void SOF::Analyze(ByteStream *bytes)
         maxV = max(sampV[i], maxV);
         quantID[i] = bytes->GetByte();
     }
-    
+
     if (!bytes->IsEnd()) {
         cerr << "[SORReader] strange length of byte stream!" << endl;
         exit(1);

@@ -17,14 +17,14 @@ void SOS::Analyze(ByteStream *bytes)
         cerr << "[SOFReader] this supports 3 components only." << endl;
         exit(1);
     }
-    
+
     for (int i=0; i<3; ++i) {
         bytes->GetByte(); // component ID
         unsigned char DCAC = bytes->GetByte();
         huffmanID[i] = DCAC >> 4;
         huffmanID[3 + i] = DCAC & 0x0f;
     }
-    
+
     // skip (support only Base line)
     while (!bytes->IsEnd()) {
         bytes->GetByte();

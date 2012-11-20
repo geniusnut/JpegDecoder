@@ -17,7 +17,7 @@ public:
     unsigned char GetByte();
     int GetLength() const;
     bool IsEnd() const;
-    
+
 private:
     unsigned char *mBytes;
     int mLength;

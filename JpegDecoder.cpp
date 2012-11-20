@@ -40,9 +40,19 @@ JpegDecoder::~JpegDecoder()
     }
 }
 
+
+/*
+ * Decode Jpeg Format Image to RGB data.
+ * What this function does is:
+ * 1. checking markers appearing
+ * 2. analyzing each segment when each marker appears.
+ * 3. decoding image sequence with 2. data.
+ */
 void JpegDecoder::Decode()
 {
-    bool flag = false;
+    // for thumbnai
+    bool skipflag = false;
+
     while (!mFileStream.IsEOF()) {
         unsigned char mark = mFileStream.ReadByte();
         if (mark != 0xff) {
@@ -50,44 +60,42 @@ void JpegDecoder::Decode()
         }
 
         mark = mFileStream.ReadByte();
+        // APP, and COM segments are skipped
         switch(mark) {
-            case markSOI:
-                if (flag) {
+            case markSOI:              // SOI (Start Of Image)
+                // TODO: skip checking with information of an APP segment
+                if (skipflag) {
                     skipThumbnail();
                 } else {
-                    flag = true;
+                    skipflag = true;
                 }
                 break;
-            case markEOI:
-            case 0:
+            case markEOI:              // EOI (End Of Image)
+            case 0:                    // escape for 0xff
                 break;
-            case markDRI:
+            case markDRI:              // DRI (Define Restart Interval)
                 mFileStream.Read2Byte(); // length
                 mRestartInterval = mFileStream.Read2Byte();
                 break;
-            case markDQT:
-                cout << "DQT" << mFileStream.mCount << endl;
+            case markDQT:              // DQT (Define Quantization Table)
                 analyzeSegment(&mDQT);
-                mDQT.ShowConsole();
                 break;
-            case markDHT:
-                cout << "DHT" << mFileStream.mCount << endl;
+            case markDHT:              // DHT (Define Huffman Table)
                 analyzeSegment(&mDHT);
                 break;
-            case markSOF0:
-                cout << "SOF" << mFileStream.mCount << endl;
+            case markSOF0:             // SOF (Start Of Frame)
                 analyzeSegment(&mSOF);
                 break;
-            case markSOS:
-                cout << "SOS" << mFileStream.mCount << endl;
+            case markSOS:              // SOS (Start Of Scan)
                 analyzeSegment(&mSOS);
+                // After sos segments, image data sequence starts
                 decodeData();
-                cout << "END" << mFileStream.mCount << endl;
                 break;
         } // switch(mark)
     } // while(!mFileStream.IsEOF)
 }
 
+//--- Getter -----
 void JpegDecoder::GetRGB(unsigned char *byte) const
 {
     for (int i=0; i<mSOF.height * mSOF.width; ++i) {
@@ -106,7 +114,16 @@ int JpegDecoder::GetHeight() const
 {
     return mSOF.height;
 }
+//--- END: Getter -----
 
+/*
+ * This function is to analyze given segments and get information
+ *
+ * 1. read a segment length
+ * 2. read data sequence of this segment
+ * 3. create a ByteStream instance
+ * 4. analyze the ByteStream instance
+ */
 void JpegDecoder::analyzeSegment(Segment *seg)
 {
     unsigned short length = mFileStream.Read2Byte() - 2;
@@ -117,6 +134,7 @@ void JpegDecoder::analyzeSegment(Segment *seg)
     delete[] bytes;
 }
 
+// Decoder skips data until the EOI marker appears
 void JpegDecoder::skipThumbnail()
 {
     unsigned char forward = 0;
@@ -129,6 +147,18 @@ void JpegDecoder::skipThumbnail()
     }
 }
 
+/*
+ * This function decodes image data bit sequence.
+ * data
+ *  |- MCU
+ *      |- 8x8 block
+ *      |- 8x8 block
+ *        :
+ *  |- MCU
+ *        :
+ *
+ * If a restart intarval is defined, then it resets mPreDC.
+ */
 void JpegDecoder::decodeData()
 {
     mMCU = new MCU(mSOF);
@@ -136,7 +166,7 @@ void JpegDecoder::decodeData()
     int MCUNumH = SupportFunc::CarrySurplus(mMCU->blockNumH, mSOF.maxH);
 
     for (int i=0; i<3; ++i) {
-		mRGB[i] = new unsigned char[mMCU->blockNumH * mMCU->blockNumV * 64];
+        mRGB[i] = new unsigned char[mMCU->blockNumH * mMCU->blockNumV * 64];
     }
 
     int MCUCount = 0;
@@ -181,6 +211,14 @@ void JpegDecoder::decodeMCU()
     }
 }
 
+/*
+ * This function decodes one 8x8 block.
+ * The decode flow is:
+ * 1. DC huffman decoding of 1 component
+ * 2. AC huffman decoding of 63 components
+ * 3. inverse quantization
+ * 4. inverse DCT conversion
+ */
 void JpegDecoder::decodeBlock(int compID)
 {
     memset(mWorkingBlock, 0, sizeof(int) * 64);
@@ -189,12 +227,21 @@ void JpegDecoder::decodeBlock(int compID)
     decodeDC(compID);
     decodeAC(compID);
 
-    // iDQT
+    // inverse Quantization
     for (int i=0; i<64; ++i) {
         mWorkingBlock[i] *= mDQT.tables[mSOF.quantID[compID]][i];
     }
 
-    // iDCT
+    /*
+     * inverse DCT conversion
+     *       1                 (2x+1)uπ            (2y+1)vπ
+     * Syx = - ΣΣ (CuCv * cos( --------- ) * cos( ---------- )
+     *       4                    16                  16
+     *
+     *            1      (u, v = 0)
+     * Cu, Cv = [
+     *            √2     (other)
+     */
     int iDCT[64];
     for (int y=0; y<8; ++y) {
         for (int x=0; x<8; ++x) {
@@ -216,6 +263,20 @@ void JpegDecoder::decodeBlock(int compID)
 	}
 }
 
+/*
+ * DC and AC component and Huffman code:
+ *
+ * DC:
+ * [ huffman code | read bit ]
+ *
+ * AC:
+ * [ huffman code | [ run-length | read bit] ]
+ *
+ * Sequence:
+ * DC, AC, AC,..., AC, DC, AC,...
+ *
+ * These are decoded with the huffman table corresponding with componentID and DC or AC
+ */
 void JpegDecoder::decodeDC(int compID)
 {
     const HuffmanTable &huff = mDHT(DC, mSOS(DC, compID));
@@ -223,11 +284,8 @@ void JpegDecoder::decodeDC(int compID)
     int bitnum = decodeHuffCode(huff);
 
     int diff = mFileStream.ReadBits(bitnum);
-    // if the top bit of diff is 0, it's negative
-    if ((diff & (1 << (bitnum - 1))) == 0) {
-        // reverse sign
-        diff -= (1 << bitnum) - 1;
-    }
+    diff = SupportFunc::CheckNegative(diff, bitnum);
+
     mPreDC[compID] += diff;
     mWorkingBlock[0] = mPreDC[compID];
 }
@@ -260,32 +318,38 @@ void JpegDecoder::decodeAC(int compID)
             --run;
         }
 		int a = mFileStream.ReadBits(bit);
-        if ((a & (1 << (bit - 1))) == 0) {
-            a -= (1 << bit) - 1;
-        }
+        a = SupportFunc::CheckNegative(a, bit);
+
 		mWorkingBlock[JpgZigzag[i]] = a;
     }
 }
 
+// Check and decode huffman codes from the top of bits
 int JpegDecoder::decodeHuffCode(const HuffmanTable &huffTable)
 {
     int bitnum = -1;
     unsigned char length = 0;
     unsigned short code = 0;
+
     while (bitnum < 0) {
         code <<= 1;
         unsigned char tmp = mFileStream.ReadBits(1);
         code |= tmp;
         ++length;
+
+        // GetData returns -1 if a given code is not defined in the table.
         bitnum = huffTable.GetData(length, code);
     }
     return bitnum;
 }
 
+/*
+ * This converts and pastes MCU blocks (mMCU) to RGB image data (mRGB)
+ */
 void JpegDecoder::MCU2RGB(int x, int y)
 {
-    int offsetH = x * mMCU->width;
     int offsetV = y * mMCU->height * mSOF.width;
+    int offsetH = x * mMCU->width;
     int offset = offsetH + offsetV;
 
     unsigned char *pY  = mMCU->YCbCr[0];
@@ -300,6 +364,7 @@ void JpegDecoder::MCU2RGB(int x, int y)
     for (int picY = 0; picY < mMCU->height; ++picY) {
         for (int picX = 0; picX < mMCU->width; ++picX) {
             if (picX + offsetH >= mSOF.width) {
+                // cut off the useless data (the right and bottom end of data)
                 pY  += mMCU->width - picX;
                 pCb += mMCU->width - picX;
                 pCr += mMCU->width - picX;

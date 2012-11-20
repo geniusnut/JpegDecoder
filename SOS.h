@@ -13,13 +13,13 @@
 
 class ByteStream;
 
-typedef struct S_SOS : public Segment
+struct SOS : public Segment
 {
     void Analyze(ByteStream *bytes);
     unsigned char operator() (int DCAC, int compID);
     void ShowConsole();
-    
+
     unsigned char huffmanID[6]; // DC or AC of 3 components
-} SOS;
+};
 
 #endif /* defined(__JpegDecorder__SOS__) */

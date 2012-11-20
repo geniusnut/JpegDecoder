@@ -13,11 +13,11 @@
 
 class ByteStream;
 
-typedef struct S_SOF : public Segment
+struct SOF : public Segment
 {
     void Analyze(ByteStream *bytes);
     void ShowConsole();
-    
+
     int width;
     int height;
     unsigned char sampV[3];
@@ -25,6 +25,6 @@ typedef struct S_SOF : public Segment
     unsigned char quantID[3];
     unsigned char maxV;
     unsigned char maxH;
-} SOF;
+};
 
 #endif /* defined(__JpegDecorder__SOF__) */

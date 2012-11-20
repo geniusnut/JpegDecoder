@@ -13,12 +13,12 @@
 
 class ByteStream;
 
-typedef struct S_DQTArray : public Segment
+struct DQT : public Segment
 {
     void Analyze(ByteStream *byteStream);
     void ShowConsole() const;
-    
+
     unsigned char tables[4][64];
-} DQT;
+};
 
 #endif

@@ -22,12 +22,12 @@ class JpegDecoder
 public:
     JpegDecoder(const char *filename);
     ~JpegDecoder();
-    
+
     void Decode();
     void GetRGB(unsigned char *byte) const;
     int  GetWitdh() const;
     int  GetHeight() const;
-    
+
 private:
     void analyzeSegment(Segment *seg);
     void skipThumbnail();
@@ -38,7 +38,7 @@ private:
     void decodeAC(int compID);
     int  decodeHuffCode(const HuffmanTable &huffTable);
     void MCU2RGB(int x, int y);
-    
+
     DQT            mDQT;
     DHT            mDHT;
     SOF            mSOF;
@@ -48,9 +48,8 @@ private:
     double         mCosTable[8][8];
 
     unsigned char  *mRGB[3];
-    int            mUnitSize;
     int            mWorkingBlock[64];
-    
+
     int            mPreDC[3];
     MCU            *mMCU;
 };

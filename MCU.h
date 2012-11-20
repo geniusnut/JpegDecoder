@@ -11,11 +11,11 @@
 
 #include <iostream>
 
-struct S_SOF;
+struct SOF;
 
 struct MCU
 {
-    MCU(const struct S_SOF &sof);
+    MCU(const SOF &sof);
     ~MCU();
     void InitializeComponent();
     void SetBlock(int compID, int bx, int by, int *block);

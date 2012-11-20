@@ -9,6 +9,9 @@
 #include "MCU.h"
 #include "SOF.h"
 #include "SupportFunc.h"
+#include <iostream>
+using namespace std;
+
 
 MCU::MCU(const SOF &sof)
 :
@@ -28,7 +31,7 @@ dataSize(sof.maxH * sof.maxV * 64)
 MCU::~MCU()
 {
     for (int i=0; i<3; ++i) {
-        SupportFunc::SafeDeleteArray(YCbCr[i]);
+        SupportFunc::SafeDeleteArray<unsigned char>(YCbCr[i]);
     }
 }
 

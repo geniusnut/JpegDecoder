@@ -12,10 +12,12 @@
 #include <iostream>
 #include <algorithm>
 #include <bitset>
-#include <fstream>
 
 using namespace std;
 
+/*
+ * Get decoded data by a code and that length
+ */
 int HuffmanTable::GetData(unsigned char length, unsigned short code) const
 {
     int i;
@@ -36,39 +38,36 @@ int HuffmanTable::GetData(unsigned char length, unsigned short code) const
     }
 }
 
+// for Debug
 void HuffmanTable::ShowConsole()
 {
     for (int i=0; i<codeArray.size(); ++i) {
         cout << "len:" << (int)lengthArray[i] << " ";
-        cout << "cod:" << (int)codeArray[i] << " ";
-        cout << "dat:" << (int)dataArray[i] << endl;
-    }
-}
-void HuffmanTable::WriteFile(const char *filename)
-{
-	ofstream ofs(filename, ios::out | ios::trunc);
-	for (int i=0; i<codeArray.size(); ++i) {
-        ofs << dec << "size:" << (int)lengthArray[i] << " ";
-        bitset<16> bs(codeArray[i]);
-		ofs << "code:" << bs << " ";
-        ofs << hex << "value:" << (int)dataArray[i] << endl;
-		ofs << endl;
+        cout << "cod:" << (int)codeArray[i]   << " ";
+        cout << "dat:" << (int)dataArray[i]   << endl;
     }
 }
 
+
+/*
+ * Analyze segment bit-sequence
+ *
+ * DHT data format:
+ * [ length(2) | DCAC(0.5) | ID(0.5) | alloc num(1x16) | data(alloc num[1 to 16]) ]
+ */
 void DHT::Analyze(ByteStream *bytes)
 {
     while (!bytes->IsEnd()) {
         // determine table
         unsigned char th = bytes->GetByte();
         int tableIndex = (th >> 4) * 4 + (th & 0x0f);
-        
+
         // allocated byte num
         unsigned char allocated[16];
         for (int i=0; i<16; ++i) {
             allocated[i] = bytes->GetByte();
         }
-        
+
         // code define
         unsigned short code = 0;
         unsigned char bitnum = 0;
@@ -85,12 +84,18 @@ void DHT::Analyze(ByteStream *bytes)
     }
 }
 
-
+/*
+ * Getter of the huffman table which has DCAC and ID
+ *
+ * tables array:
+ * [ (DC, 0),..., (DC, 3), (AC, 0),..., (AC, 3) ]
+ */
 const HuffmanTable& DHT::operator() (int DCAC, int ID) const
 {
     return tables[DCAC * 4 + ID];
 }
 
+// for Debug
 void DHT::ShowConsole()
 {
     for (int DCAC=0; DCAC<2; DCAC++) {
