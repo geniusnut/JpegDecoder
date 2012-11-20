@@ -1,4 +1,4 @@
 JpegDecoder
 ===========
 
-JpegDecorder
+JpegDecoder
